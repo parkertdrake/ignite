@@ -8,9 +8,9 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { to: "/budget", label: "Budget", icon: "💰" },
-  { to: "/investments", label: "Investments", icon: "📈" },
-  { to: "/fire", label: "FIRE", icon: "🔥" },
+  { to: "/budget", label: "Budget" },
+  { to: "/investments", label: "Investments" },
+  { to: "/fire", label: "FIRE" },
 ];
 
 export default function Sidebar({ open, onToggle }: SidebarProps) {
@@ -40,7 +40,6 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
             to={item.to}
             className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
           >
-            <span className="nav-icon">{item.icon}</span>
             <span className="nav-label">{item.label}</span>
           </NavLink>
         ))}

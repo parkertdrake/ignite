@@ -102,11 +102,6 @@ body {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.nav-icon {
-  width: 20px;
-  text-align: center;
-}
-
 .sidebar-footer {
   margin-top: auto;
   display: flex;

@@ -1,0 +1,52 @@
+---
+# Per-surface test runner. Pass SURFACE=backend|frontend.
+# backend gets its own venv; frontend runs npm ci + vitest. Single
+# image carries python + node so either surface runs from the same
+# task definition.
+#
+# Inputs:
+#   - source: git resource checkout containing the full ignite repo.
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: nikolaik/python-nodejs
+    tag: python3.12-nodejs20
+
+inputs:
+  - name: source
+
+params:
+  SURFACE:
+
+run:
+  path: bash
+  args:
+    - -euo
+    - pipefail
+    - -c
+    - |
+      cd source
+
+      case "$SURFACE" in
+          backend)
+              echo "=== backend pytest ==="
+              python -m venv /tmp/venv-backend
+              source /tmp/venv-backend/bin/activate
+              pip install -q -r backend/requirements.txt -r backend/requirements-dev.txt
+              cd backend
+              pytest -q
+              ;;
+          frontend)
+              echo "=== frontend vitest ==="
+              cd frontend
+              npm ci
+              npm test
+              ;;
+          *)
+              echo "ERROR: unknown SURFACE='$SURFACE' (expected backend|frontend)" >&2
+              exit 1
+              ;;
+      esac

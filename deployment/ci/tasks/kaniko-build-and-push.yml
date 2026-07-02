@@ -1,0 +1,65 @@
+---
+# Kaniko build-push task. Builds a container image and pushes it to a
+# registry — rootless, no Docker daemon, no privileged container.
+#
+# Auth: takes raw REGISTRY_USERNAME + REGISTRY_PASSWORD and synthesizes
+# the docker config.json inline (kaniko's required format). Keeps the
+# Concourse credential surface narrow — same robot's username/password
+# also drives helm-chart-push, no separate docker-config blob to manage.
+#
+# Inputs:
+#   - source: git resource checkout containing the Dockerfile and
+#     build context.
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: gcr.io/kaniko-project/executor
+    tag: v1.23.2-debug
+
+inputs:
+  - name: source
+
+params:
+  REGISTRY_HOST:
+  REGISTRY_USERNAME:
+  REGISTRY_PASSWORD:
+  IMAGE_REPOSITORY:
+  IMAGE_TAG: ""
+  DOCKERFILE_PATH: Dockerfile
+  BUILD_CONTEXT: source
+
+run:
+  path: /busybox/sh
+  args:
+    - -eu
+    - -c
+    - |
+      # Build docker config.json from username/password without leaking
+      # either to argv or stdout. printf into base64, write the JSON
+      # with a single redirect, never echo the encoded auth.
+      mkdir -p /kaniko/.docker
+      AUTH_B64="$(printf '%s:%s' "$REGISTRY_USERNAME" "$REGISTRY_PASSWORD" | base64 -w0)"
+      printf '{"auths":{"%s":{"auth":"%s"}}}' "$REGISTRY_HOST" "$AUTH_B64" > /kaniko/.docker/config.json
+      unset AUTH_B64 REGISTRY_USERNAME REGISTRY_PASSWORD
+      chmod 600 /kaniko/.docker/config.json
+
+      if [ -z "${IMAGE_TAG}" ]; then
+          IMAGE_TAG="$(cat source/.git/short_ref)"
+      fi
+
+      DESTINATION="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
+
+      echo "=== kaniko build ==="
+      echo "dockerfile:  ${BUILD_CONTEXT}/${DOCKERFILE_PATH}"
+      echo "context:     ${BUILD_CONTEXT}"
+      echo "destination: ${DESTINATION}"
+
+      /kaniko/executor \
+          --context="${BUILD_CONTEXT}" \
+          --dockerfile="${BUILD_CONTEXT}/${DOCKERFILE_PATH}" \
+          --destination="${DESTINATION}" \
+          --cache=true \
+          --cache-repo="${IMAGE_REPOSITORY}-cache"

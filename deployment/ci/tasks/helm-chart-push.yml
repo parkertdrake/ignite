@@ -1,0 +1,85 @@
+---
+# Helm chart package + OCI push.
+#
+# Packages the local chart under $CHART_PATH, tagging the chart version
+# as MAJOR.MINOR.<rev-count> and appVersion with the source short sha,
+# then pushes it to the Harbor OCI registry under $HARBOR_PROJECT/$CHART_NAME.
+#
+# Harbor credentials come from the Concourse credential manager as
+# HARBOR_USERNAME / HARBOR_PASSWORD. Create a robot account with push
+# access to the target project before running this task.
+#
+# Inputs:
+#   - source: git resource checkout containing the chart directory.
+
+platform: linux
+
+image_resource:
+  type: registry-image
+  source:
+    repository: dtzar/helm-kubectl
+    tag: "3.15.4"
+
+inputs:
+  - name: source
+
+params:
+  CHART_PATH:
+  CHART_NAME: ignite
+  VERSION:
+  HARBOR_REGISTRY: harbor.cluster.brindledev.com
+  HARBOR_PROJECT: ignite
+  HARBOR_USERNAME:
+  HARBOR_PASSWORD:
+
+run:
+  path: bash
+  args:
+    - -euo
+    - pipefail
+    - -c
+    - |
+      if [ -z "$VERSION" ]; then
+          VERSION="$(cat source/.git/short_ref)"
+      fi
+      # Chart version is MAJOR.MINOR.<rev-count> — plain semver, no
+      # prerelease, so helm OCI --version and Concourse's registry-image
+      # semver_constraint both accept it. Short sha still goes into
+      # appVersion so `helm history` / `helm show chart` expose the commit.
+      BASE_VERSION="$(awk '/^version:/ {print $2; exit}' "source/$CHART_PATH/Chart.yaml")"
+      MAJOR_MINOR="$(echo "$BASE_VERSION" | awk -F. '{print $1"."$2}')"
+      REV_COUNT="$(git -C source rev-list --count HEAD)"
+      FULL_VERSION="${MAJOR_MINOR}.${REV_COUNT}"
+
+      echo "=== helm package ==="
+      echo "chart:       $CHART_NAME"
+      echo "base:        $BASE_VERSION"
+      echo "version:     $FULL_VERSION"
+      echo "app version: $VERSION"
+      echo "registry:    $HARBOR_REGISTRY/$HARBOR_PROJECT"
+
+      OUT_DIR="$(mktemp -d)"
+      helm package "source/$CHART_PATH" \
+          --version "$FULL_VERSION" \
+          --app-version "$VERSION" \
+          --destination "$OUT_DIR"
+
+      PACKAGE="$OUT_DIR/${CHART_NAME}-${FULL_VERSION}.tgz"
+      if [ ! -f "$PACKAGE" ]; then
+          echo "ERROR: expected package at $PACKAGE not found" >&2
+          ls -la "$OUT_DIR" >&2
+          exit 1
+      fi
+
+      echo "=== helm registry login ==="
+      echo "$HARBOR_PASSWORD" | helm registry login "$HARBOR_REGISTRY" \
+          --username "$HARBOR_USERNAME" --password-stdin
+
+      echo "=== helm push ==="
+      helm push "$PACKAGE" "oci://$HARBOR_REGISTRY/$HARBOR_PROJECT"
+
+      echo "=== helm registry logout ==="
+      helm registry logout "$HARBOR_REGISTRY" || true
+
+      echo
+      echo "pushed: oci://$HARBOR_REGISTRY/$HARBOR_PROJECT/$CHART_NAME:$FULL_VERSION"

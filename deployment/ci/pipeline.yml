@@ -1,0 +1,136 @@
+---
+# ignite Concourse pipeline.
+#
+# Self-deploying: the set-pipeline job updates this pipeline automatically
+# when deployment/ci/** changes.
+#
+# fly set-pipeline -p ignite -c deployment/ci/pipeline.yml
+# (break-glass only — normal flow is via the set-pipeline job)
+#
+# Modeled on cairn's pipeline: two images (backend/frontend) build in
+# parallel after their tests pass; chart push gates on both builds.
+# Tag = ignite-source's short_ref; chart appVersion gets the same sha so
+# `helm history` exposes the matching commit.
+
+resource_defaults:
+  git:
+    check_every: 15s
+
+resources:
+  - name: ignite-source
+    type: git
+    icon: github
+    source:
+      uri: https://gitea.cluster.brindledev.com/parkertdrake/ignite
+      branch: main
+      username: x-access-token
+      password: ((gitea-pat))
+
+  - name: ignite-ci
+    type: git
+    icon: github
+    source:
+      uri: https://gitea.cluster.brindledev.com/parkertdrake/ignite
+      branch: main
+      username: x-access-token
+      password: ((gitea-pat))
+      paths:
+        - deployment/ci/**
+
+jobs:
+  - name: set-pipeline
+    serial: true
+    plan:
+      - get: ignite-ci
+        trigger: true
+      - set_pipeline: self
+        file: ignite-ci/deployment/ci/pipeline.yml
+
+  - name: test-backend
+    serial: true
+    plan:
+      - get: ignite-source
+        trigger: true
+      - task: run-tests
+        file: ignite-source/deployment/ci/tasks/run-tests.yml
+        input_mapping:
+          source: ignite-source
+        params:
+          SURFACE: backend
+
+  - name: test-frontend
+    serial: true
+    plan:
+      - get: ignite-source
+        trigger: true
+      - task: run-tests
+        file: ignite-source/deployment/ci/tasks/run-tests.yml
+        input_mapping:
+          source: ignite-source
+        params:
+          SURFACE: frontend
+
+  - name: build-backend
+    serial: true
+    plan:
+      - get: ignite-source
+        passed: [test-backend]
+        trigger: true
+      - task: kaniko-build-and-push
+        file: ignite-source/deployment/ci/tasks/kaniko-build-and-push.yml
+        input_mapping:
+          source: ignite-source
+        params:
+          REGISTRY_HOST: harbor.cluster.brindledev.com
+          REGISTRY_USERNAME: ((harbor-chart-robot.username))
+          REGISTRY_PASSWORD: ((harbor-chart-robot.password))
+          IMAGE_REPOSITORY: harbor.cluster.brindledev.com/ignite/backend
+          DOCKERFILE_PATH: deployment/Dockerfile
+          BUILD_CONTEXT: source/backend
+
+  - name: build-frontend
+    serial: true
+    plan:
+      - get: ignite-source
+        passed: [test-frontend]
+        trigger: true
+      - task: kaniko-build-and-push
+        file: ignite-source/deployment/ci/tasks/kaniko-build-and-push.yml
+        input_mapping:
+          source: ignite-source
+        params:
+          REGISTRY_HOST: harbor.cluster.brindledev.com
+          REGISTRY_USERNAME: ((harbor-chart-robot.username))
+          REGISTRY_PASSWORD: ((harbor-chart-robot.password))
+          IMAGE_REPOSITORY: harbor.cluster.brindledev.com/ignite/frontend
+          DOCKERFILE_PATH: deployment/Dockerfile
+          BUILD_CONTEXT: source/frontend
+
+  # Package + push the chart only when both image builds pass.
+  # passed:[build-*] transitively requires the corresponding test too.
+  - name: publish-chart
+    serial: true
+    plan:
+      - get: ignite-source
+        passed: [build-backend, build-frontend]
+        trigger: true
+      - task: helm-chart-push
+        file: ignite-source/deployment/ci/tasks/helm-chart-push.yml
+        input_mapping:
+          source: ignite-source
+        params:
+          CHART_PATH: deployment/chart
+          CHART_NAME: ignite
+          HARBOR_PROJECT: ignite
+          HARBOR_USERNAME: ((harbor-chart-robot.username))
+          HARBOR_PASSWORD: ((harbor-chart-robot.password))
+
+groups:
+  - name: all
+    jobs:
+      - set-pipeline
+      - test-backend
+      - test-frontend
+      - build-backend
+      - build-frontend
+      - publish-chart

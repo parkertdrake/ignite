@@ -1,0 +1,38 @@
+{{- if .Values.httpRoute.enabled }}
+# Ignite UI + API HTTPRoute. Single host, path-routed.
+#   /api/* → backend (Service :{{ .Values.backend.port }})
+#   /      → frontend (Service :{{ .Values.frontend.port }})
+# Parented at the shared cluster Gateway. TLS handled by the Gateway
+# listener; this route carries no TLS config of its own.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ignite
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ .Values.httpRoute.parent.name }}
+      namespace: {{ .Values.httpRoute.parent.namespace }}
+  hostnames:
+    - {{ .Values.httpRoute.host }}
+  rules:
+    {{- if .Values.backend.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: ignite-backend
+          port: {{ .Values.backend.port }}
+    {{- end }}
+    {{- if .Values.frontend.enabled }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ignite-frontend
+          port: {{ .Values.frontend.port }}
+    {{- end }}
+{{- end }}

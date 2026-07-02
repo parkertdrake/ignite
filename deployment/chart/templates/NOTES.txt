@@ -1,0 +1,25 @@
+ignite deployed to namespace {{ .Release.Namespace }} as release {{ .Release.Name }}.
+
+Services:
+{{- if .Values.backend.enabled }}
+  - backend → ignite-backend:{{ .Values.backend.port }}
+{{- end }}
+{{- if .Values.frontend.enabled }}
+  - frontend → ignite-frontend:{{ .Values.frontend.port }}
+{{- end }}
+
+{{- if .Values.httpRoute.enabled }}
+
+UI:   https://{{ .Values.httpRoute.host }}/
+API:  https://{{ .Values.httpRoute.host }}/api/
+{{- end }}
+
+Pre-flight checks:
+  1. Image-pull Secret 'harbor-pull' exists in {{ .Release.Namespace }}
+     (run deployment/secrets/create-secret.sh once per cluster).
+  2. The shared Gateway '{{ .Values.httpRoute.parent.name }}' in
+     namespace '{{ .Values.httpRoute.parent.namespace }}' is up.
+
+To smoke-test the backend from inside the cluster:
+  kubectl -n {{ .Release.Namespace }} exec deploy/ignite-backend -- \
+    python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:{{ .Values.backend.port }}/health').read())"

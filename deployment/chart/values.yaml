@@ -1,0 +1,68 @@
+# ignite chart defaults.
+# Install-specific overrides live in the consumer repo (e.g.
+# home-kubernetes/infrastructure/tier-3/ignite/values.yaml).
+
+# Image registry. Both images live under the same Harbor project:
+# <registry>/<service>:<tag>. Empty tag → .Chart.AppVersion.
+image:
+  registry: harbor.cluster.brindledev.com/ignite
+  pullPolicy: IfNotPresent
+  # dockerconfigjson Secret in the release namespace, provisioned
+  # out-of-band by deployment/secrets/create-secret.sh. Set to [] if the
+  # images later become public on Harbor.
+  pullSecrets:
+    - name: harbor-pull
+  tag: ""
+
+backend:
+  enabled: true
+  replicas: 1
+  port: 8000
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 24
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Non-secret env. Add a secretName envFrom here if the backend later
+  # needs credentials (DB URL, plaid keys, etc.).
+  env:
+    LOG_LEVEL: INFO
+
+frontend:
+  enabled: true
+  replicas: 1
+  port: 80
+  readinessProbe:
+    path: /healthz
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    failureThreshold: 12
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# HTTPRoute: single host, path-routed via the shared cluster Gateway.
+#   /api/* → backend (Service :8000)
+#   /      → frontend (Service :80)
+# TLS is terminated at the shared Gateway listener; this route carries
+# no TLS config of its own.
+httpRoute:
+  enabled: true
+  host: finance.cluster.brindledev.com
+  parent:
+    name: cluster-gateway
+    namespace: gateway-system
+
+# Extra chart-wide labels applied to every resource (optional).
+extraLabels: {}

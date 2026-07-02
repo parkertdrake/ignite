@@ -30,10 +30,32 @@ backend:
     limits:
       cpu: 500m
       memory: 512Mi
-  # Non-secret env. Add a secretName envFrom here if the backend later
-  # needs credentials (DB URL, plaid keys, etc.).
+  # Non-secret env. DATABASE_URL is injected separately via envFrom on
+  # the ignite-postgres secret (see postgres stanza below).
   env:
     LOG_LEVEL: INFO
+
+# Bundled Postgres for persistent app data (budgets, holdings, sim
+# results — tables land via alembic later). Single-pod StatefulSet;
+# password generated on first install and preserved across upgrades via
+# `lookup` on the ignite-postgres secret. The backend gets DATABASE_URL
+# from that secret through envFrom and runs `alembic upgrade head` on
+# startup. Disable to point ignite at an external Postgres (supply
+# DATABASE_URL another way).
+postgres:
+  enabled: true
+  image: postgres:16-alpine
+  user: ignite
+  database: ignite
+  storageClass: longhorn
+  storageSize: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 frontend:
   enabled: true

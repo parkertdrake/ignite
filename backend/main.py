@@ -1,15 +1,60 @@
-"""Ignite backend — FastAPI stub for the personal finance app.
+"""Ignite backend — FastAPI app.
 
-Serves a liveness endpoint at /health (hit directly on the pod by the
-Kubernetes readiness probe) and the public API under /api, which the
-ingress HTTPRoute routes to this service. The frontend calls /api/*
-through the same host, so everything user-facing lives under that prefix.
+Endpoints:
+  /health          liveness/readiness (hit directly on the pod)
+  /api/health      same check, through the ingress /api prefix
+  /api/db/health   database connectivity
+  /api/accounts    stub
+
+On startup (when database_url is set) the app runs `alembic upgrade
+head` so the schema is migrated before serving. No tables yet — the
+machinery is in place for budgets, holdings, and simulation data.
 """
+import asyncio
+import logging
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
-app = FastAPI(title="Ignite", version="0.1.0")
+from config import Settings
+from persistence import database
+
+settings = Settings()
+logging.basicConfig(level=settings.log_level.upper())
+logger = logging.getLogger(__name__)
+
+
+def _run_alembic_upgrade(database_url: str) -> None:
+    """Sync `alembic upgrade head` — called from a thread on startup."""
+    from alembic import command
+    from alembic.config import Config
+
+    here = Path(__file__).resolve().parent
+    cfg = Config(str(here / "alembic.ini"))
+    cfg.set_main_option("script_location", str(here / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", database_url)
+    os.environ["DATABASE_URL"] = database_url
+    command.upgrade(cfg, "head")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if settings.database_url:
+        logger.info("startup: running alembic upgrade head")
+        try:
+            await asyncio.to_thread(_run_alembic_upgrade, settings.database_url)
+        except Exception:
+            logger.exception("startup: alembic upgrade failed; continuing without DB")
+    yield
+    await database.dispose()
+
+
+app = FastAPI(title="Ignite", version="0.1.0", lifespan=lifespan)
 
 # Dev-only convenience: the Vite dev server runs on a different origin
 # than the API. In-cluster both are served from the same host via the
@@ -34,6 +79,20 @@ def api_health():
     return {"status": "ok", "service": "ignite-backend"}
 
 
+@app.get("/api/db/health")
+async def db_health():
+    """Report database connectivity (disabled when no DATABASE_URL)."""
+    if not database.enabled:
+        return {"database": "disabled"}
+    try:
+        async with database.engine().connect() as connection:
+            await connection.execute(text("SELECT 1"))
+        return {"database": "connected"}
+    except Exception as error:
+        logger.warning("db_health: %s", error)
+        return {"database": "error"}
+
+
 @app.get("/api/accounts")
 def list_accounts():
     """Stub endpoint — returns a placeholder account list."""
@@ -46,7 +105,7 @@ def list_accounts():
 
 
 def main():
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.host, port=settings.port)
 
 
 if __name__ == "__main__":

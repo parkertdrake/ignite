@@ -25,6 +25,23 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.postgres.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h ignite-postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do
+                echo "waiting for postgres..."
+                sleep 2
+              done
+          envFrom:
+            - secretRef:
+                name: ignite-postgres
+      {{- end }}
       containers:
         - name: backend
           image: {{ include "ignite.backendImage" . }}
@@ -39,6 +56,12 @@ spec:
             initialDelaySeconds: {{ .Values.backend.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.backend.readinessProbe.periodSeconds }}
             failureThreshold: {{ .Values.backend.readinessProbe.failureThreshold }}
+          {{- if .Values.postgres.enabled }}
+          # DATABASE_URL + POSTGRES_* come from the bundled postgres secret.
+          envFrom:
+            - secretRef:
+                name: ignite-postgres
+          {{- end }}
           env:
             {{- range $key, $value := .Values.backend.env }}
             - name: {{ $key }}

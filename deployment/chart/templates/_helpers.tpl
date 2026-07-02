@@ -43,3 +43,10 @@ component: frontend
 app.kubernetes.io/name: {{ include "ignite.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
+
+{{- define "ignite.postgresSelectorLabels" -}}
+app: ignite
+component: postgres
+app.kubernetes.io/name: {{ include "ignite.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}

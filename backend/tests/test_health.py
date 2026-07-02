@@ -23,3 +23,10 @@ def test_accounts_stub_returns_list():
     response = client.get("/api/accounts")
     assert response.status_code == 200
     assert len(response.json()["accounts"]) == 2
+
+
+def test_db_health_disabled_without_database_url():
+    # Tests run with no DATABASE_URL set, so the DB is disabled.
+    response = client.get("/api/db/health")
+    assert response.status_code == 200
+    assert response.json() == {"database": "disabled"}

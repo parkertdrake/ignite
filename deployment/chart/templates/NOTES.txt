@@ -7,6 +7,9 @@ Services:
 {{- if .Values.frontend.enabled }}
   - frontend → ignite-frontend:{{ .Values.frontend.port }}
 {{- end }}
+{{- if .Values.postgres.enabled }}
+  - postgres → ignite-postgres:5432 (DATABASE_URL in the ignite-postgres secret)
+{{- end }}
 
 {{- if .Values.httpRoute.enabled }}
 

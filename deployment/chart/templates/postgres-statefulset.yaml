@@ -1,0 +1,67 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ignite-postgres
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+    component: postgres
+spec:
+  serviceName: ignite-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ignite.postgresSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ignite.postgresSelectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image | quote }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: ignite-postgres
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 6
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.postgres.storageClass | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storageSize | quote }}
+{{- end }}

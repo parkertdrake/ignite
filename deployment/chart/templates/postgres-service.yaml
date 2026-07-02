@@ -1,0 +1,18 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignite-postgres
+  labels:
+    {{- include "ignite.labels" . | nindent 4 }}
+    component: postgres
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ignite.postgresSelectorLabels" . | nindent 4 }}
+  ports:
+    - name: postgres
+      protocol: TCP
+      port: 5432
+      targetPort: postgres
+{{- end }}

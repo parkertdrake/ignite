@@ -1,3 +1,6 @@
 -r requirements.txt
 pytest==8.3.4
 httpx==0.28.1
+# Async sqlite driver — lets tests exercise the persistence layer
+# without a running Postgres.
+aiosqlite>=0.20

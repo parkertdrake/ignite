@@ -26,6 +26,23 @@ export function TrashIcon({ size = 16 }: { size?: number }) {
   );
 }
 
+export function CheckIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base} strokeWidth={2.4}>
+      <path d="M5 12.5l4.5 4.5L19 6.5" />
+    </svg>
+  );
+}
+
+export function ChevronIcon({ size = 18 }: { size?: number }) {
+  // Points up; rotated 180° for the collapsed state.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M6 15l6-6 6 6" />
+    </svg>
+  );
+}
+
 export function CopyIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...base}>

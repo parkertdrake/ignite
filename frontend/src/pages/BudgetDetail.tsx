@@ -5,7 +5,7 @@ import CloneBudgetDialog from "../components/CloneBudgetDialog";
 import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
 import EarningsPanel from "../components/EarningsPanel";
 import SummaryHeader from "../components/SummaryHeader";
-import { CopyIcon, TrashIcon } from "../components/icons";
+import { CheckIcon, CopyIcon, TrashIcon } from "../components/icons";
 
 export default function BudgetDetail() {
   const params = useParams();
@@ -37,24 +37,25 @@ export default function BudgetDetail() {
         <>
           <div className="section-head">
             <div>
-              <h2>
-                {budget.name}
-                {budget.status === "active" && <span className="badge">Active</span>}
-              </h2>
+              <h2>{budget.name}</h2>
               <p className="muted">
                 Created {new Date(budget.created_at).toLocaleDateString()}
               </p>
             </div>
             <div className="detail-actions">
-              {budget.status !== "active" && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => activateBudget.mutate(budgetId)}
-                  disabled={activateBudget.isPending}
-                >
-                  Set active
-                </button>
-              )}
+              <button
+                className={`btn-icon success${budget.status === "active" ? " on" : ""}`}
+                aria-label={
+                  budget.status === "active" ? "Budget is active" : "Set budget active"
+                }
+                aria-pressed={budget.status === "active"}
+                onClick={() => {
+                  if (budget.status !== "active") activateBudget.mutate(budgetId);
+                }}
+                disabled={activateBudget.isPending}
+              >
+                <CheckIcon />
+              </button>
               <button
                 className="btn-icon"
                 aria-label="Duplicate budget"

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Budget as BudgetModel, useActivateBudget, useBudgets, useCreateBudget } from "../api/budgets";
 import CloneBudgetDialog from "../components/CloneBudgetDialog";
 import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
 import SummaryHeader from "../components/SummaryHeader";
-import { CopyIcon, TrashIcon } from "../components/icons";
+import { CheckIcon, CopyIcon, TrashIcon } from "../components/icons";
 
 export default function Budget() {
+  const navigate = useNavigate();
   const budgetsQuery = useBudgets();
   const createBudget = useCreateBudget();
   const activateBudget = useActivateBudget();
@@ -85,43 +86,63 @@ export default function Budget() {
         <div className="card-grid">
           {budgetsQuery.data.map((budget) => {
             const isActive = budget.status === "active";
+            const open = () => navigate(`/budget/${budget.id}`);
             return (
-              <div key={budget.id} className={`budget-card${isActive ? " active" : ""}`}>
+              <div
+                key={budget.id}
+                className={`budget-card${isActive ? " active" : ""}`}
+                role="button"
+                tabIndex={0}
+                onClick={open}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    open();
+                  }
+                }}
+              >
                 <div className="budget-card-head">
                   <h3 className="budget-card-name">{budget.name}</h3>
                   <div className="card-head-right">
-                    {isActive && <span className="badge">Active</span>}
-                    <button
-                      className="btn-icon"
-                      aria-label={`Duplicate ${budget.name}`}
-                      onClick={() => setCloneTarget(budget)}
-                    >
-                      <CopyIcon />
-                    </button>
-                    <button
-                      className="btn-icon danger"
-                      aria-label={`Delete ${budget.name}`}
-                      onClick={() => setDeleteTarget(budget)}
-                    >
-                      <TrashIcon />
-                    </button>
+                    <div className="card-icons">
+                      <button
+                        className={`btn-icon success${isActive ? " on" : ""}`}
+                        aria-label={
+                          isActive ? `${budget.name} is active` : `Set ${budget.name} active`
+                        }
+                        aria-pressed={isActive}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isActive) activateBudget.mutate(budget.id);
+                        }}
+                        disabled={activateBudget.isPending}
+                      >
+                        <CheckIcon />
+                      </button>
+                      <button
+                        className="btn-icon"
+                        aria-label={`Duplicate ${budget.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setCloneTarget(budget);
+                        }}
+                      >
+                        <CopyIcon />
+                      </button>
+                      <button
+                        className="btn-icon danger"
+                        aria-label={`Delete ${budget.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeleteTarget(budget);
+                        }}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <SummaryHeader summary={budget.summary} variant="card" />
-                <div className="budget-card-actions">
-                  <Link className="btn btn-ghost" to={`/budget/${budget.id}`}>
-                    Open →
-                  </Link>
-                  {!isActive && (
-                    <button
-                      className="btn btn-ghost"
-                      onClick={() => activateBudget.mutate(budget.id)}
-                      disabled={activateBudget.isPending}
-                    >
-                      Activate
-                    </button>
-                  )}
-                </div>
               </div>
             );
           })}

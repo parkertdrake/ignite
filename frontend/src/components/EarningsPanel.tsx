@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   Earning,
   useCreateEarning,
@@ -7,6 +7,7 @@ import {
   useUpdateEarning,
 } from "../api/earnings";
 import { formatCurrency } from "../lib/format";
+import { ChevronIcon } from "./icons";
 
 function XIcon() {
   return (
@@ -31,53 +32,90 @@ function blink(element: HTMLElement | null) {
 export default function EarningsPanel({ budgetId }: { budgetId: number }) {
   const earningsQuery = useEarnings(budgetId);
   const [adding, setAdding] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const earnings = earningsQuery.data ?? [];
-  const monthlyTotal =
-    earnings.reduce((sum, earning) => sum + earning.gross_annual, 0) / 12;
+  const grossTotal = earnings.reduce((sum, earning) => sum + earning.gross_annual, 0);
+  const monthlyTotal = grossTotal / 12;
   const showLedger = earnings.length > 0 || adding;
+  const toggle = () => setCollapsed((value) => !value);
+
+  // Measure the body so it can animate between its real height and 0
+  // (the CSS grid 1fr/0fr trick proved unreliable). Re-measured every
+  // render, so adding/removing rows keeps the open height correct.
+  const bodyInnerRef = useRef<HTMLDivElement>(null);
+  const [bodyHeight, setBodyHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (bodyInnerRef.current) setBodyHeight(bodyInnerRef.current.scrollHeight);
+  });
 
   return (
     <section className="panel panel-income">
-      <div className="panel-head">
-        <h3 className="panel-title">Earnings</h3>
-        <p className="panel-sub">Gross salaried income, per person.</p>
+      <div
+        className="panel-header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onClick={toggle}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggle();
+          }
+        }}
+      >
+        <div className="panel-head-left">
+          <h3 className="panel-title">Earnings</h3>
+          {!collapsed && <p className="panel-sub">Gross salaried income, per person.</p>}
+        </div>
+        <div className="panel-head-right">
+          {collapsed && (
+            <div className="panel-collapsed-totals">
+              <span>{formatCurrency(monthlyTotal)}/mo</span>
+            </div>
+          )}
+          <span className={`panel-caret${collapsed ? " inverted" : ""}`}>
+            <ChevronIcon />
+          </span>
+        </div>
       </div>
 
-      {earningsQuery.isLoading && <p className="muted">Loading…</p>}
-      {earningsQuery.isError && (
-        <p className="error-text">Could not load earnings: {earningsQuery.error.message}</p>
-      )}
+      <div className="panel-body" style={{ height: collapsed ? 0 : bodyHeight }}>
+        <div className="panel-body-inner" ref={bodyInnerRef}>
+          {earningsQuery.isLoading && <p className="muted">Loading…</p>}
+          {earningsQuery.isError && (
+            <p className="error-text">Could not load earnings: {earningsQuery.error.message}</p>
+          )}
 
-      {showLedger && (
-        <div className="ledger">
-          <div className="ledger-head">
-            <span>Person</span>
-            <span className="num">Gross / year</span>
-            <span className="num">Monthly</span>
-            <span />
-          </div>
-          {earnings.map((earning) => (
-            <EarningRow key={earning.id} budgetId={budgetId} earning={earning} />
-          ))}
-          {adding && (
-            <DraftRow budgetId={budgetId} onDone={() => setAdding(false)} />
+          {showLedger && (
+            <div className="ledger">
+              <div className="ledger-head">
+                <span>Person</span>
+                <span className="num">Gross / year</span>
+                <span className="num">Monthly</span>
+                <span />
+              </div>
+              {earnings.map((earning) => (
+                <EarningRow key={earning.id} budgetId={budgetId} earning={earning} />
+              ))}
+              {adding && <DraftRow budgetId={budgetId} onDone={() => setAdding(false)} />}
+            </div>
+          )}
+
+          {!adding && (
+            <button className="btn btn-add add-trigger" onClick={() => setAdding(true)}>
+              + Add income
+            </button>
+          )}
+
+          {earnings.length > 0 && (
+            <div className="panel-total">
+              <span>Monthly income</span>
+              <span className="num tone-income">{formatCurrency(monthlyTotal)}</span>
+            </div>
           )}
         </div>
-      )}
-
-      {!adding && (
-        <button className="btn btn-add add-trigger" onClick={() => setAdding(true)}>
-          + Add income
-        </button>
-      )}
-
-      {earnings.length > 0 && (
-        <div className="panel-total">
-          <span>Monthly income</span>
-          <span className="num tone-income">{formatCurrency(monthlyTotal)}</span>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

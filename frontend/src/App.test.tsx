@@ -16,7 +16,9 @@ test("renders brand and nav links", () => {
       <App />
     </MemoryRouter>,
   );
-  expect(screen.getByRole("heading", { name: "Ignite" })).toBeInTheDocument();
+  // Sidebar defaults collapsed, so the brand renders in both the topbar and the
+  // (hidden) sidebar header — assert at least one is present.
+  expect(screen.getAllByRole("heading", { name: "Ignite" }).length).toBeGreaterThan(0);
   expect(screen.getByRole("link", { name: /Budget/ })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Investments/ })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /FIRE/ })).toBeInTheDocument();

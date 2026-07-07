@@ -7,7 +7,7 @@ import Fire from "./pages/Fire";
 import Investments from "./pages/Investments";
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleSidebar = () => setSidebarOpen((open) => !open);
 
   return (
@@ -21,6 +21,7 @@ export default function App() {
             <button className="icon-btn" aria-label="Open sidebar" onClick={toggleSidebar}>
               <SidebarIcon />
             </button>
+            <h1 className="brand">Ignite</h1>
           </header>
         )}
         <main className="page">

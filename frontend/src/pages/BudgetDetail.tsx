@@ -4,7 +4,11 @@ import { useActivateBudget, useBudget } from "../api/budgets";
 import CloneBudgetDialog from "../components/CloneBudgetDialog";
 import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
 import EarningsPanel from "../components/EarningsPanel";
+import PretaxSavingsPanel from "../components/PretaxSavingsPanel";
+import SavingsPanel from "../components/SavingsPanel";
+import SpendingPanel from "../components/SpendingPanel";
 import SummaryHeader from "../components/SummaryHeader";
+import TaxesPanel from "../components/TaxesPanel";
 import { CheckIcon, CopyIcon, TrashIcon } from "../components/icons";
 
 export default function BudgetDetail() {
@@ -76,6 +80,10 @@ export default function BudgetDetail() {
           <SummaryHeader summary={budget.summary} />
 
           <EarningsPanel budgetId={budgetId} />
+          <PretaxSavingsPanel />
+          <TaxesPanel />
+          <SpendingPanel />
+          <SavingsPanel />
 
           {cloning && (
             <CloneBudgetDialog

@@ -425,6 +425,11 @@ body {
   color: var(--income);
 }
 
+/* Panel footer total value, colored by the panel's tone. */
+.panel-total-value {
+  color: var(--tone);
+}
+
 /* Summary stat row — colored monthly totals. */
 .summary-row {
   display: grid;
@@ -520,9 +525,10 @@ body {
 
 /* Trickle-down panels. */
 .panel {
+  --tone: var(--border);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--border);
+  border-left: 3px solid var(--tone);
   border-radius: 12px;
   /* Vertical padding lives on the header (symmetric, so a collapsed panel
      centers its title) and the body, not the panel itself. */
@@ -530,8 +536,22 @@ body {
   margin-bottom: 20px;
 }
 
+/* Trickle-down accent per panel, consumed by the border + collapsed total. */
 .panel-income {
-  border-left-color: var(--income);
+  --tone: var(--income);
+}
+.panel-savings {
+  --tone: var(--savings);
+}
+.panel-taxes {
+  --tone: var(--taxes);
+}
+.panel-spending {
+  --tone: var(--spending);
+}
+
+.panel-stub {
+  margin: 0;
 }
 
 /* Clickable panel header toggles the collapsed state. */
@@ -568,17 +588,21 @@ body {
   font-size: 13px;
 }
 
-/* Totals shown in the header only while collapsed. */
-.panel-collapsed-totals {
+/* Neutral container for whatever a panel shows while collapsed. Content
+   is caller-controlled (e.g. a monthly number, or Spending's category
+   breakdown); this only lays it out. */
+.panel-collapsed {
   display: flex;
+  align-items: center;
   gap: 16px;
-  font-variant-numeric: tabular-nums;
 }
 
-.panel-collapsed-totals span {
-  color: var(--income);
+/* Opt-in style for the common "$X/mo" collapsed figure, tone-colored. */
+.collapsed-total {
+  color: var(--tone);
   font-weight: 600;
   font-size: 15px;
+  font-variant-numeric: tabular-nums;
 }
 
 .panel-caret {

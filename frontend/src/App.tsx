@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import SidebarIcon from "./components/SidebarIcon";
 import Budget from "./pages/Budget";
+import BudgetDetail from "./pages/BudgetDetail";
 import Fire from "./pages/Fire";
 import Investments from "./pages/Investments";
 
@@ -28,6 +29,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/budget" replace />} />
             <Route path="/budget" element={<Budget />} />
+            <Route path="/budget/:budgetId" element={<BudgetDetail />} />
             <Route path="/investments" element={<Investments />} />
             <Route path="/fire" element={<Fire />} />
           </Routes>

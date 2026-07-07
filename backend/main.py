@@ -1,10 +1,9 @@
-"""Ignite backend — FastAPI app.
+"""Ignite backend — FastAPI app assembly.
 
-Endpoints:
-  /health          liveness/readiness (hit directly on the pod)
-  /api/health      same check, through the ingress /api prefix
-  /api/db/health   database connectivity
-  /api/accounts    stub
+Routers live in `routers/`, business logic in `services/`, and the typed
+HTTP contract in `schemas/`. The shared `get_session` dependency is in
+`dependencies.py`. This module only wires the app together: lifespan,
+middleware, and router registration.
 
 On startup (when database_url is set) the app runs `alembic upgrade
 head` so the schema is migrated before serving. No tables yet — the
@@ -19,10 +18,10 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from config import Settings
 from persistence import database
+from routers import accounts, budgets, health
 
 settings = Settings()
 logging.basicConfig(level=settings.log_level.upper())
@@ -66,42 +65,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/health")
-def health():
-    """Liveness/readiness probe target. Hit directly on the pod."""
-    return {"status": "ok"}
-
-
-@app.get("/api/health")
-def api_health():
-    """Same check, reachable through the ingress /api prefix."""
-    return {"status": "ok", "service": "ignite-backend"}
-
-
-@app.get("/api/db/health")
-async def db_health():
-    """Report database connectivity (disabled when no DATABASE_URL)."""
-    if not database.enabled:
-        return {"database": "disabled"}
-    try:
-        async with database.engine().connect() as connection:
-            await connection.execute(text("SELECT 1"))
-        return {"database": "connected"}
-    except Exception as error:
-        logger.warning("db_health: %s", error)
-        return {"database": "error"}
-
-
-@app.get("/api/accounts")
-def list_accounts():
-    """Stub endpoint — returns a placeholder account list."""
-    return {
-        "accounts": [
-            {"id": 1, "name": "Checking", "balance": 0.0},
-            {"id": 2, "name": "Savings", "balance": 0.0},
-        ]
-    }
+app.include_router(health.router)
+app.include_router(accounts.router)
+app.include_router(budgets.router)
 
 
 def main():

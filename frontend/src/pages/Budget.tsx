@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useActivateBudget, useBudgets, useCreateBudget } from "../api/budgets";
+import { Budget as BudgetModel, useActivateBudget, useBudgets, useCreateBudget } from "../api/budgets";
+import CloneBudgetDialog from "../components/CloneBudgetDialog";
+import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
+import SummaryHeader from "../components/SummaryHeader";
+import { CopyIcon, TrashIcon } from "../components/icons";
 
 export default function Budget() {
   const budgetsQuery = useBudgets();
@@ -9,6 +13,8 @@ export default function Budget() {
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [cloneTarget, setCloneTarget] = useState<BudgetModel | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BudgetModel | null>(null);
 
   const submitCreate = (event: React.FormEvent) => {
     event.preventDefault();
@@ -83,8 +89,25 @@ export default function Budget() {
               <div key={budget.id} className={`budget-card${isActive ? " active" : ""}`}>
                 <div className="budget-card-head">
                   <h3 className="budget-card-name">{budget.name}</h3>
-                  {isActive && <span className="badge">Active</span>}
+                  <div className="card-head-right">
+                    {isActive && <span className="badge">Active</span>}
+                    <button
+                      className="btn-icon"
+                      aria-label={`Duplicate ${budget.name}`}
+                      onClick={() => setCloneTarget(budget)}
+                    >
+                      <CopyIcon />
+                    </button>
+                    <button
+                      className="btn-icon danger"
+                      aria-label={`Delete ${budget.name}`}
+                      onClick={() => setDeleteTarget(budget)}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 </div>
+                <SummaryHeader summary={budget.summary} variant="card" />
                 <div className="budget-card-actions">
                   <Link className="btn btn-ghost" to={`/budget/${budget.id}`}>
                     Open →
@@ -103,6 +126,13 @@ export default function Budget() {
             );
           })}
         </div>
+      )}
+
+      {cloneTarget && (
+        <CloneBudgetDialog budget={cloneTarget} onClose={() => setCloneTarget(null)} />
+      )}
+      {deleteTarget && (
+        <DeleteBudgetDialog budget={deleteTarget} onClose={() => setDeleteTarget(null)} />
       )}
     </section>
   );

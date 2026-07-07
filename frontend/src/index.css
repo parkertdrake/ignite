@@ -11,6 +11,13 @@
   --accent-dim: #0c8f66;
   --danger: #ef4444;
 
+  /* Trickle-down flow colors: income green, savings blue, spending red,
+     taxes orange. */
+  --income: #10b981;
+  --savings: #3b82f6;
+  --spending: #ef4444;
+  --taxes: #f59e0b;
+
   --sidebar-width: 232px;
   --sidebar-collapsed: 0px;
 
@@ -358,6 +365,337 @@ body {
   border: 1px solid var(--accent);
   border-radius: 999px;
   padding: 2px 8px;
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tone-income {
+  color: var(--income);
+}
+
+/* Summary stat row — colored monthly totals. */
+.summary-row {
+  display: grid;
+  /* minmax(0, …) lets columns shrink below their label width instead of
+     forcing horizontal overflow. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.summary-stat.income {
+  border-left-color: var(--income);
+}
+.summary-stat.savings {
+  border-left-color: var(--savings);
+}
+.summary-stat.spending {
+  border-left-color: var(--spending);
+}
+.summary-stat.net.balanced {
+  border-left-color: var(--accent);
+}
+.summary-stat.net.over {
+  border-left-color: var(--danger);
+}
+
+.summary-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.summary-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.summary-stat.income .summary-stat-value {
+  color: var(--income);
+}
+.summary-stat.savings .summary-stat-value {
+  color: var(--savings);
+}
+.summary-stat.spending .summary-stat-value {
+  color: var(--spending);
+}
+.summary-stat.net.balanced .summary-stat-value {
+  color: var(--accent);
+}
+.summary-stat.net.over .summary-stat-value {
+  color: var(--danger);
+}
+
+/* Card variant: 2x2 grid, no borders/background per stat, so four stats
+   fit a narrow card without overflowing. */
+.summary-row.card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin-bottom: 0;
+}
+
+.summary-row.card .summary-stat {
+  background: transparent;
+  border: none;
+  border-left: none;
+  padding: 0;
+  min-width: 0;
+}
+
+.summary-row.card .summary-stat-label {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-row.card .summary-stat-value {
+  font-size: 16px;
+}
+
+/* Trickle-down panels. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.panel-income {
+  border-left-color: var(--income);
+}
+
+.panel-head {
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.panel-sub {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Ledger: editable rows of person / amount / derived / action.
+   Header, rows, and the draft row share one fixed template so they line
+   up column-for-column (fr/auto would resolve per-grid). */
+.ledger-head,
+.ledger-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 130px 96px;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.ledger-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 0 2px 10px;
+}
+
+.ledger-row {
+  padding: 6px 0;
+}
+
+/* Monthly (derived) cell: stretch to the row height and flex-center so it
+   sits at the true vertical middle of the taller inputs beside it. */
+.ledger-monthly {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Draft (add) row animates into existence. */
+.ledger-draft {
+  animation: row-enter 0.18s ease-out;
+}
+
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.field-error {
+  border-color: var(--danger);
+}
+
+.field-msg {
+  grid-column: 1 / -1;
+  margin: 4px 2px 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.add-trigger {
+  margin-top: 14px;
+}
+
+/* Green-outline, greyed interior. */
+.btn-add {
+  background: var(--surface-2);
+  border-color: var(--income);
+  color: var(--income);
+  justify-content: center;
+}
+
+.btn-add:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+/* Small square icon button (row remove / draft cancel). */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.btn-icon.danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Card head: name on the left, badge + copy/delete icons on the right. */
+.card-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-head-right .btn-icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* Detail header actions cluster. */
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Modal. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.modal-text {
+  margin: 0 0 16px;
+}
+
+.modal-input {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.panel-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 15px;
 }
 
 /* Phone: sidebar overlays the content instead of squeezing it. */

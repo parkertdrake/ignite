@@ -4,27 +4,48 @@
   POST /api/budgets                create a budget
   GET  /api/budgets/{id}           fetch one
   POST /api/budgets/{id}/activate  mark as the current budget
+
+Each response embeds a monthly `summary` (income/savings/spending/net).
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from dependencies import get_session
-from schemas.budgets import BudgetCreate, BudgetOut
+from persistence.models import Budget
+from schemas.budgets import BudgetCreate, BudgetOut, BudgetSummary
 from services import budget_service
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 
 
+def _to_out(budget: Budget, summary: dict) -> BudgetOut:
+    return BudgetOut(
+        id=budget.id,
+        name=budget.name,
+        status=budget.status,
+        created_at=budget.created_at,
+        summary=BudgetSummary(**summary),
+    )
+
+
 @router.get("", response_model=list[BudgetOut])
 async def list_budgets(session: AsyncSession = Depends(get_session)) -> list[BudgetOut]:
-    return await budget_service.list_budgets(session)
+    budgets = await budget_service.list_budgets(session)
+    income_map = await budget_service.monthly_income_by_budget(
+        session, [budget.id for budget in budgets]
+    )
+    return [
+        _to_out(budget, budget_service.summary_from(income_map.get(budget.id, 0.0)))
+        for budget in budgets
+    ]
 
 
 @router.post("", response_model=BudgetOut, status_code=201)
 async def create_budget(
     payload: BudgetCreate, session: AsyncSession = Depends(get_session)
 ) -> BudgetOut:
-    return await budget_service.create_budget(session, payload.name)
+    budget = await budget_service.create_budget(session, payload.name)
+    return _to_out(budget, await budget_service.summarize(session, budget.id))
 
 
 @router.get("/{budget_id}", response_model=BudgetOut)
@@ -34,7 +55,7 @@ async def get_budget(
     budget = await budget_service.get_budget(session, budget_id)
     if budget is None:
         raise HTTPException(status_code=404, detail="budget not found")
-    return budget
+    return _to_out(budget, await budget_service.summarize(session, budget.id))
 
 
 @router.post("/{budget_id}/activate", response_model=BudgetOut)
@@ -44,4 +65,24 @@ async def activate_budget(
     budget = await budget_service.activate_budget(session, budget_id)
     if budget is None:
         raise HTTPException(status_code=404, detail="budget not found")
-    return budget
+    return _to_out(budget, await budget_service.summarize(session, budget.id))
+
+
+@router.post("/{budget_id}/copy", response_model=BudgetOut, status_code=201)
+async def copy_budget(
+    budget_id: int,
+    payload: BudgetCreate,
+    session: AsyncSession = Depends(get_session),
+) -> BudgetOut:
+    clone = await budget_service.clone_budget(session, budget_id, payload.name)
+    if clone is None:
+        raise HTTPException(status_code=404, detail="budget not found")
+    return _to_out(clone, await budget_service.summarize(session, clone.id))
+
+
+@router.delete("/{budget_id}", status_code=204)
+async def delete_budget(
+    budget_id: int, session: AsyncSession = Depends(get_session)
+) -> None:
+    if not await budget_service.delete_budget(session, budget_id):
+        raise HTTPException(status_code=404, detail="budget not found")

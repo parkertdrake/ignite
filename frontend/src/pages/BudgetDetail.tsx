@@ -1,15 +1,26 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useActivateBudget, useBudget } from "../api/budgets";
+import CloneBudgetDialog from "../components/CloneBudgetDialog";
+import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
+import EarningsPanel from "../components/EarningsPanel";
+import SummaryHeader from "../components/SummaryHeader";
+import { CopyIcon, TrashIcon } from "../components/icons";
 
 export default function BudgetDetail() {
   const params = useParams();
+  const navigate = useNavigate();
   const budgetId = Number(params.budgetId);
   const budgetQuery = useBudget(budgetId);
   const activateBudget = useActivateBudget();
+  const [cloning, setCloning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   if (Number.isNaN(budgetId)) {
     return <p className="error-text">Invalid budget id.</p>;
   }
+
+  const budget = budgetQuery.data;
 
   return (
     <section className="page-section">
@@ -22,36 +33,63 @@ export default function BudgetDetail() {
         <p className="error-text">Could not load budget: {budgetQuery.error.message}</p>
       )}
 
-      {budgetQuery.data && (
+      {budget && (
         <>
           <div className="section-head">
             <div>
               <h2>
-                {budgetQuery.data.name}
-                {budgetQuery.data.status === "active" && <span className="badge">Active</span>}
+                {budget.name}
+                {budget.status === "active" && <span className="badge">Active</span>}
               </h2>
               <p className="muted">
-                Created {new Date(budgetQuery.data.created_at).toLocaleDateString()}
+                Created {new Date(budget.created_at).toLocaleDateString()}
               </p>
             </div>
-            {budgetQuery.data.status !== "active" && (
+            <div className="detail-actions">
+              {budget.status !== "active" && (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => activateBudget.mutate(budgetId)}
+                  disabled={activateBudget.isPending}
+                >
+                  Set active
+                </button>
+              )}
               <button
-                className="btn btn-primary"
-                onClick={() => activateBudget.mutate(budgetId)}
-                disabled={activateBudget.isPending}
+                className="btn-icon"
+                aria-label="Duplicate budget"
+                onClick={() => setCloning(true)}
               >
-                Set active
+                <CopyIcon />
               </button>
-            )}
+              <button
+                className="btn-icon danger"
+                aria-label="Delete budget"
+                onClick={() => setDeleting(true)}
+              >
+                <TrashIcon />
+              </button>
+            </div>
           </div>
 
-          <div className="card">
-            <h3>Contents</h3>
-            <p className="muted">
-              Income, expenses, and savings goals land here next. This is the budget shell —
-              the editor is coming.
-            </p>
-          </div>
+          <SummaryHeader summary={budget.summary} />
+
+          <EarningsPanel budgetId={budgetId} />
+
+          {cloning && (
+            <CloneBudgetDialog
+              budget={budget}
+              onClose={() => setCloning(false)}
+              onCloned={(clone) => navigate(`/budget/${clone.id}`)}
+            />
+          )}
+          {deleting && (
+            <DeleteBudgetDialog
+              budget={budget}
+              onClose={() => setDeleting(false)}
+              onDeleted={() => navigate("/budget")}
+            />
+          )}
         </>
       )}
     </section>

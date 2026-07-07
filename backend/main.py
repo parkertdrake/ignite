@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import Settings
 from persistence import database
-from routers import accounts, budgets, health
+from routers import accounts, budgets, earnings, health
 
 settings = Settings()
 logging.basicConfig(level=settings.log_level.upper())
@@ -68,6 +68,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(accounts.router)
 app.include_router(budgets.router)
+app.include_router(earnings.router)
 
 
 def main():

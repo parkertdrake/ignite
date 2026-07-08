@@ -457,6 +457,9 @@ body {
 .summary-stat.savings {
   border-left-color: var(--savings);
 }
+.summary-stat.taxes {
+  border-left-color: var(--taxes);
+}
 .summary-stat.spending {
   border-left-color: var(--spending);
 }
@@ -485,6 +488,9 @@ body {
 }
 .summary-stat.savings .summary-stat-value {
   color: var(--savings);
+}
+.summary-stat.taxes .summary-stat-value {
+  color: var(--taxes);
 }
 .summary-stat.spending .summary-stat-value {
   color: var(--spending);
@@ -863,6 +869,58 @@ body {
   border-top: 1px solid var(--border);
   font-weight: 600;
   font-size: 15px;
+}
+
+/* Taxes panel: config selectors, taxable-basis note, and per-tax lines. */
+.tax-config {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.tax-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+.select-input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+.select-input:focus {
+  outline: none;
+  border-color: var(--tone);
+}
+.tax-basis {
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.tax-lines {
+  display: flex;
+  flex-direction: column;
+}
+.tax-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.tax-line:last-child {
+  border-bottom: none;
 }
 
 /* Phone: sidebar overlays the content instead of squeezing it. */

@@ -7,7 +7,9 @@ def _make_budget(client, name="2026"):
 
 def test_new_budget_summary_is_zero(client):
     budget = _make_budget(client)
-    assert budget["summary"] == {"income": 0.0, "savings": 0.0, "spending": 0.0, "net": 0.0}
+    assert budget["summary"] == {
+        "income": 0.0, "savings": 0.0, "taxes": 0.0, "spending": 0.0, "net": 0.0,
+    }
 
 
 def test_create_and_list_earnings(client):

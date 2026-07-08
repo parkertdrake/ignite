@@ -8,6 +8,7 @@ export type BudgetStatus = "active" | "inactive";
 export interface BudgetSummary {
   income: number;
   savings: number;
+  taxes: number;
   spending: number;
   net: number;
 }
@@ -17,6 +18,9 @@ export interface Budget {
   name: string;
   status: BudgetStatus;
   created_at: string;
+  tax_year: number | null;
+  state: string | null;
+  filing_status: string;
   summary: BudgetSummary;
 }
 

@@ -81,9 +81,9 @@ export default function BudgetDetail() {
 
           <EarningsPanel budgetId={budgetId} />
           <PretaxSavingsPanel budgetId={budgetId} />
-          <TaxesPanel />
+          <TaxesPanel budgetId={budgetId} />
           <SpendingPanel />
-          <SavingsPanel />
+          <SavingsPanel budgetId={budgetId} />
 
           {cloning && (
             <CloneBudgetDialog

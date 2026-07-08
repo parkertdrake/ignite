@@ -17,6 +17,7 @@ from persistence.models import (
     Earning,
     Saving,
 )
+from services import tax_service
 
 MONTHS_PER_YEAR = 12
 
@@ -74,14 +75,21 @@ async def monthly_savings_by_budget(
     return {budget_id: float(total) / MONTHS_PER_YEAR for budget_id, total in result.all()}
 
 
-def summary_from(monthly_income: float, savings: float = 0.0, spending: float = 0.0) -> dict:
-    """Assemble the monthly trickle-down summary. Panels fill in savings/
-    spending as they are built; net is the leftover (target $0)."""
+def summary_from(
+    monthly_income: float,
+    savings: float = 0.0,
+    taxes: float = 0.0,
+    spending: float = 0.0,
+) -> dict:
+    """Assemble the monthly trickle-down summary. Panels fill in each line as
+    they are built; net is the leftover after savings, taxes, and spending
+    (target $0)."""
     return {
         "income": monthly_income,
         "savings": savings,
+        "taxes": taxes,
         "spending": spending,
-        "net": monthly_income - savings - spending,
+        "net": monthly_income - savings - taxes - spending,
     }
 
 
@@ -91,8 +99,17 @@ async def summaries_for(
     """Monthly summaries keyed by budget id (aggregates computed once)."""
     income = await monthly_income_by_budget(session, budget_ids)
     savings = await monthly_savings_by_budget(session, budget_ids)
+    taxes = {
+        budget_id: (await tax_service.compute_for_budget(session, budget_id))["total_annual"]
+        / MONTHS_PER_YEAR
+        for budget_id in budget_ids
+    }
     return {
-        budget_id: summary_from(income.get(budget_id, 0.0), savings.get(budget_id, 0.0))
+        budget_id: summary_from(
+            income.get(budget_id, 0.0),
+            savings.get(budget_id, 0.0),
+            taxes.get(budget_id, 0.0),
+        )
         for budget_id in budget_ids
     }
 
@@ -113,6 +130,29 @@ async def activate_budget(session: AsyncSession, budget_id: int) -> Budget | Non
         .values(status=BUDGET_STATUS_INACTIVE)
     )
     budget.status = BUDGET_STATUS_ACTIVE
+    await session.commit()
+    await session.refresh(budget)
+    return budget
+
+
+async def set_tax_config(
+    session: AsyncSession,
+    budget_id: int,
+    tax_year: int | None,
+    state: str | None,
+    filing_status: str | None,
+) -> Budget | None:
+    """Update a budget's tax config (year / state / filing status). Only the
+    provided fields change; state is cleared by passing an empty string."""
+    budget = await session.get(Budget, budget_id)
+    if budget is None:
+        return None
+    if tax_year is not None:
+        budget.tax_year = tax_year
+    if state is not None:
+        budget.state = state or None
+    if filing_status is not None:
+        budget.filing_status = filing_status
     await session.commit()
     await session.refresh(budget)
     return budget
@@ -142,7 +182,13 @@ async def clone_budget(
     source = await session.get(Budget, budget_id)
     if source is None:
         return None
-    clone = Budget(name=new_name, status=BUDGET_STATUS_INACTIVE)
+    clone = Budget(
+        name=new_name,
+        status=BUDGET_STATUS_INACTIVE,
+        tax_year=source.tax_year,
+        state=source.state,
+        filing_status=source.filing_status,
+    )
     session.add(clone)
     await session.flush()  # assign clone.id before copying children
 

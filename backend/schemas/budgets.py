@@ -11,12 +11,12 @@ class BudgetCreate(BaseModel):
 class BudgetSummary(BaseModel):
     """Monthly roll-up across the trickle-down flow (all figures per month).
 
-    Populated panel by panel; savings/spending stay 0 until those panels
-    exist. `net` = income - savings - spending (taxes fold in with M1 #6).
-    """
+    Populated panel by panel; spending stays 0 until that panel exists.
+    `net` = income - savings - taxes - spending (target $0)."""
 
     income: float
     savings: float
+    taxes: float
     spending: float
     net: float
 
@@ -28,4 +28,7 @@ class BudgetOut(BaseModel):
     name: str
     status: str
     created_at: datetime
+    tax_year: int | None = None
+    state: str | None = None
+    filing_status: str
     summary: BudgetSummary

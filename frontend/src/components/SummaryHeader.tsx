@@ -16,6 +16,7 @@ export default function SummaryHeader({ summary, variant = "full" }: SummaryHead
     <div className={`summary-row ${variant}`}>
       <Stat label="Income" tone="income" value={summary.income} />
       <Stat label="Savings" tone="savings" value={summary.savings} />
+      <Stat label="Taxes" tone="taxes" value={summary.taxes} />
       <Stat label="Spending" tone="spending" value={summary.spending} />
       <Stat label="Net" tone={`net ${netState}`} value={summary.net} />
     </div>

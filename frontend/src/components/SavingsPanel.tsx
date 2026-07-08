@@ -1,16 +1,14 @@
-import { formatCurrency } from "../lib/format";
-import CollapsiblePanel from "./CollapsiblePanel";
+import SavingsLedgerPanel from "./SavingsLedgerPanel";
 
-// Trickle-down step 5 (blue): post-tax savings goals. Stub for now.
-export default function SavingsPanel() {
+// Trickle-down step 5 (blue): post-tax savings goals.
+export default function SavingsPanel({ budgetId }: { budgetId: number }) {
   return (
-    <CollapsiblePanel
+    <SavingsLedgerPanel
+      budgetId={budgetId}
+      pretax={false}
       title="Savings"
-      subtitle="Post-tax savings goals."
-      tone="savings"
-      collapsedSummary={<span className="collapsed-total">{formatCurrency(0)}/mo</span>}
-    >
-      <p className="muted panel-stub">Coming soon.</p>
-    </CollapsiblePanel>
+      subtitle="Post-tax savings goals — brokerage, cash, sinking funds."
+      addLabel="+ Add savings goal"
+    />
   );
 }

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dependencies import get_session
 from persistence.models import Budget
 from schemas.budgets import BudgetCreate, BudgetOut, BudgetSummary
+from schemas.taxes import TaxConfigUpdate
 from services import budget_service
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
@@ -24,6 +25,9 @@ def _to_out(budget: Budget, summary: dict) -> BudgetOut:
         name=budget.name,
         status=budget.status,
         created_at=budget.created_at,
+        tax_year=budget.tax_year,
+        state=budget.state,
+        filing_status=budget.filing_status,
         summary=BudgetSummary(**summary),
     )
 
@@ -73,6 +77,20 @@ async def copy_budget(
     if clone is None:
         raise HTTPException(status_code=404, detail="budget not found")
     return _to_out(clone, await budget_service.summarize(session, clone.id))
+
+
+@router.patch("/{budget_id}/tax-config", response_model=BudgetOut)
+async def update_tax_config(
+    budget_id: int,
+    payload: TaxConfigUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> BudgetOut:
+    budget = await budget_service.set_tax_config(
+        session, budget_id, payload.tax_year, payload.state, payload.filing_status
+    )
+    if budget is None:
+        raise HTTPException(status_code=404, detail="budget not found")
+    return _to_out(budget, await budget_service.summarize(session, budget.id))
 
 
 @router.delete("/{budget_id}", status_code=204)

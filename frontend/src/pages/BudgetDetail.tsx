@@ -80,7 +80,7 @@ export default function BudgetDetail() {
           <SummaryHeader summary={budget.summary} />
 
           <EarningsPanel budgetId={budgetId} />
-          <PretaxSavingsPanel />
+          <PretaxSavingsPanel budgetId={budgetId} />
           <TaxesPanel />
           <SpendingPanel />
           <SavingsPanel />

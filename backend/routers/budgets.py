@@ -31,13 +31,8 @@ def _to_out(budget: Budget, summary: dict) -> BudgetOut:
 @router.get("", response_model=list[BudgetOut])
 async def list_budgets(session: AsyncSession = Depends(get_session)) -> list[BudgetOut]:
     budgets = await budget_service.list_budgets(session)
-    income_map = await budget_service.monthly_income_by_budget(
-        session, [budget.id for budget in budgets]
-    )
-    return [
-        _to_out(budget, budget_service.summary_from(income_map.get(budget.id, 0.0)))
-        for budget in budgets
-    ]
+    summaries = await budget_service.summaries_for(session, [budget.id for budget in budgets])
+    return [_to_out(budget, summaries[budget.id]) for budget in budgets]
 
 
 @router.post("", response_model=BudgetOut, status_code=201)

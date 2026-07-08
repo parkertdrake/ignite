@@ -15,6 +15,7 @@ from persistence.models import (
     BUDGET_STATUS_INACTIVE,
     Budget,
     Earning,
+    Saving,
 )
 
 MONTHS_PER_YEAR = 12
@@ -59,6 +60,20 @@ async def monthly_income_by_budget(
     return {budget_id: float(total) / MONTHS_PER_YEAR for budget_id, total in result.all()}
 
 
+async def monthly_savings_by_budget(
+    session: AsyncSession, budget_ids: list[int]
+) -> dict[int, float]:
+    """Monthly savings (annual contributions / 12) keyed by budget id."""
+    if not budget_ids:
+        return {}
+    result = await session.execute(
+        select(Saving.budget_id, func.coalesce(func.sum(Saving.amount_annual), 0))
+        .where(Saving.budget_id.in_(budget_ids))
+        .group_by(Saving.budget_id)
+    )
+    return {budget_id: float(total) / MONTHS_PER_YEAR for budget_id, total in result.all()}
+
+
 def summary_from(monthly_income: float, savings: float = 0.0, spending: float = 0.0) -> dict:
     """Assemble the monthly trickle-down summary. Panels fill in savings/
     spending as they are built; net is the leftover (target $0)."""
@@ -70,10 +85,21 @@ def summary_from(monthly_income: float, savings: float = 0.0, spending: float = 
     }
 
 
+async def summaries_for(
+    session: AsyncSession, budget_ids: list[int]
+) -> dict[int, dict]:
+    """Monthly summaries keyed by budget id (aggregates computed once)."""
+    income = await monthly_income_by_budget(session, budget_ids)
+    savings = await monthly_savings_by_budget(session, budget_ids)
+    return {
+        budget_id: summary_from(income.get(budget_id, 0.0), savings.get(budget_id, 0.0))
+        for budget_id in budget_ids
+    }
+
+
 async def summarize(session: AsyncSession, budget_id: int) -> dict:
     """Monthly summary for a single budget."""
-    income_map = await monthly_income_by_budget(session, [budget_id])
-    return summary_from(income_map.get(budget_id, 0.0))
+    return (await summaries_for(session, [budget_id]))[budget_id]
 
 
 async def activate_budget(session: AsyncSession, budget_id: int) -> Budget | None:
@@ -102,6 +128,7 @@ async def delete_budget(session: AsyncSession, budget_id: int) -> bool:
     if budget is None:
         return False
     await session.execute(delete(Earning).where(Earning.budget_id == budget_id))
+    await session.execute(delete(Saving).where(Saving.budget_id == budget_id))
     await session.delete(budget)
     await session.commit()
     return True
@@ -128,6 +155,21 @@ async def clone_budget(
                 budget_id=clone.id,
                 person=earning.person,
                 gross_annual=earning.gross_annual,
+            )
+        )
+
+    source_savings = await session.execute(
+        select(Saving).where(Saving.budget_id == budget_id)
+    )
+    for saving in source_savings.scalars().all():
+        session.add(
+            Saving(
+                budget_id=clone.id,
+                person=saving.person,
+                account=saving.account,
+                amount_annual=saving.amount_annual,
+                period=saving.period,
+                pretax=saving.pretax,
             )
         )
     await session.commit()

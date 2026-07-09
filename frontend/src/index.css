@@ -889,10 +889,18 @@ body {
   color: var(--text-muted);
 }
 .select-input {
-  padding: 8px 12px;
+  /* Custom chevron so the arrow gets real breathing room (the native one
+     crowds the edge). appearance:none drops the built-in arrow. */
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 36px 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  background-size: 12px;
   color: var(--text);
   font-size: 14px;
   text-transform: none;
@@ -921,6 +929,60 @@ body {
 }
 .tax-line:last-child {
   border-bottom: none;
+}
+
+/* Spending ledger: Item | Category (grows) | Payer | Amount | ✕. The last
+   column is just the ✕ so the amount sits one column-gap from it (matching
+   the gap between the other columns). The draft's Add button drops to its
+   own full-width row below the inputs. */
+.ledger-spending .ledger-head,
+.ledger-spending .ledger-row {
+  grid-template-columns:
+    minmax(0, 1.2fr) minmax(0, 1.7fr) minmax(0, 1.1fr) 180px 32px;
+}
+.ledger-spending .ledger-draft {
+  row-gap: 10px;
+}
+.ledger .select-input {
+  width: 100%;
+}
+/* Amount input fills the cell so it sits flush against the mo|yr toggle
+   (no dead space between them) and its number hugs the right edge. */
+.ledger-spending .amount-cell {
+  justify-content: flex-end;
+}
+.ledger-spending .amount-cell .text-input {
+  flex: 1 1 auto;
+  max-width: none;
+}
+.draft-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Category rollup under the spending ledger. */
+.category-breakdown {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.breakdown-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-size: 14px;
 }
 
 /* Phone: sidebar overlays the content instead of squeezing it. */

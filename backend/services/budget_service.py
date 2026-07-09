@@ -14,10 +14,12 @@ from persistence.models import (
     BUDGET_STATUS_ACTIVE,
     BUDGET_STATUS_INACTIVE,
     Budget,
+    Category,
     Earning,
+    Expense,
     Saving,
 )
-from services import tax_service
+from services import expense_service, tax_service
 
 MONTHS_PER_YEAR = 12
 
@@ -99,6 +101,7 @@ async def summaries_for(
     """Monthly summaries keyed by budget id (aggregates computed once)."""
     income = await monthly_income_by_budget(session, budget_ids)
     savings = await monthly_savings_by_budget(session, budget_ids)
+    spending = await expense_service.monthly_spending_by_budget(session, budget_ids)
     taxes = {
         budget_id: (await tax_service.compute_for_budget(session, budget_id))["total_annual"]
         / MONTHS_PER_YEAR
@@ -109,6 +112,7 @@ async def summaries_for(
             income.get(budget_id, 0.0),
             savings.get(budget_id, 0.0),
             taxes.get(budget_id, 0.0),
+            spending.get(budget_id, 0.0),
         )
         for budget_id in budget_ids
     }
@@ -169,6 +173,8 @@ async def delete_budget(session: AsyncSession, budget_id: int) -> bool:
         return False
     await session.execute(delete(Earning).where(Earning.budget_id == budget_id))
     await session.execute(delete(Saving).where(Saving.budget_id == budget_id))
+    await session.execute(delete(Expense).where(Expense.budget_id == budget_id))
+    await session.execute(delete(Category).where(Category.budget_id == budget_id))
     await session.delete(budget)
     await session.commit()
     return True
@@ -216,6 +222,36 @@ async def clone_budget(
                 amount_annual=saving.amount_annual,
                 period=saving.period,
                 pretax=saving.pretax,
+            )
+        )
+
+    # Categories are per-budget: copy them, then remap expense category ids
+    # onto the clone's fresh category rows.
+    category_id_map: dict[int, int] = {}
+    source_categories = await session.execute(
+        select(Category).where(Category.budget_id == budget_id)
+    )
+    for category in source_categories.scalars().all():
+        clone_category = Category(
+            budget_id=clone.id, name=category.name, sort_order=category.sort_order
+        )
+        session.add(clone_category)
+        await session.flush()
+        category_id_map[category.id] = clone_category.id
+
+    source_expenses = await session.execute(
+        select(Expense).where(Expense.budget_id == budget_id)
+    )
+    for expense in source_expenses.scalars().all():
+        session.add(
+            Expense(
+                budget_id=clone.id,
+                item=expense.item,
+                amount_annual=expense.amount_annual,
+                period=expense.period,
+                category_id=category_id_map.get(expense.category_id),
+                payer_type=expense.payer_type,
+                payer_person=expense.payer_person,
             )
         )
     await session.commit()

@@ -11,7 +11,16 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # Budget lifecycle states. Stored as a string (not a DB enum) for
@@ -155,3 +164,59 @@ class TaxParams(Base):
     medicare_addl_threshold: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2), nullable=True
     )
+
+
+# How an expense is funded (drives the future Levers paycheck split):
+# a single person owns it, or it's shared and split by the division %.
+# "Fixed" = large/predictable (rent) → shared checking; "variable" = smaller
+# take-turns spend (dinners) → each person's personal checking.
+PAYER_INDIVIDUAL = "individual"
+PAYER_JOINT_FIXED = "joint_fixed"
+PAYER_JOINT_VARIABLE = "joint_variable"
+
+
+class Category(Base):
+    """A spending category, scoped to a budget (copied on clone). Topical
+    only (Car, Food, Home) — independent of how the expense is paid. Name is
+    unique within a budget; created inline from the expense category dropdown.
+    """
+
+    __tablename__ = "categories"
+    __table_args__ = (UniqueConstraint("budget_id", "name", name="uq_category_budget_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
+
+class Expense(Base):
+    """A single spending line within a budget: what, how much, which category,
+    and how it's funded. `payer_type` is individual / joint_fixed /
+    joint_variable; `payer_person` names the owner only when individual.
+    Amount is stored annualized (like earnings/savings); the summary and the
+    category rollup divide by 12.
+    """
+
+    __tablename__ = "expenses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    budget_id: Mapped[int] = mapped_column(
+        ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item: Mapped[str] = mapped_column(String(200), nullable=False)
+    amount_annual: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default="0"
+    )
+    # Display/entry unit ("monthly" | "yearly"); amount stays annualized.
+    period: Mapped[str] = mapped_column(String(10), nullable=False, server_default="yearly")
+    # Nullable so a row can be uncategorized; SET NULL if the category is removed.
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    payer_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=PAYER_JOINT_VARIABLE
+    )
+    payer_person: Mapped[str | None] = mapped_column(String(120), nullable=True)

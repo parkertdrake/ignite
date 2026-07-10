@@ -17,6 +17,7 @@ export interface TaxBreakdown {
   social_security: number;
   medicare: number;
   state_income: number;
+  override_annual: number;
   total_annual: number;
   effective_rate: number;
 }
@@ -30,6 +31,7 @@ export interface TaxConfigInput {
   tax_year?: number | null;
   state?: string | null;
   filing_status?: string | null;
+  tax_override_monthly?: number | null;
 }
 
 export function useTaxes(budgetId: number) {

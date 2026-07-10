@@ -19,6 +19,7 @@ class TaxBreakdown(BaseModel):
     social_security: float
     medicare: float
     state_income: float
+    override_annual: float
     total_annual: float
     effective_rate: float
 
@@ -35,3 +36,5 @@ class TaxConfigUpdate(BaseModel):
     # Empty string clears the state (federal-only); a code selects a state.
     state: str | None = Field(default=None, max_length=2)
     filing_status: str | None = Field(default=None, max_length=10)
+    # Manual add-on to the computed taxes, entered per month (stored annual).
+    tax_override_monthly: float | None = Field(default=None, ge=0)

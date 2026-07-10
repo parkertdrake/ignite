@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { formatCurrency } from "../lib/format";
 import { useTaxConfigOptions, useTaxes, useUpdateTaxConfig } from "../api/taxes";
 import CollapsiblePanel from "./CollapsiblePanel";
@@ -17,10 +18,28 @@ export default function TaxesPanel({ budgetId }: { budgetId: number }) {
   const breakdown = taxesQuery.data;
   const monthlyTotal = (breakdown?.total_annual ?? 0) / MONTHS_PER_YEAR;
   const effectiveRate = breakdown?.effective_rate ?? 0;
+  const overrideMonthly = (breakdown?.override_annual ?? 0) / MONTHS_PER_YEAR;
+  const gross = breakdown?.gross ?? 0;
+  const overrideRate = gross > 0 ? (breakdown?.override_annual ?? 0) / gross : 0;
+
+  // Editable monthly override, seeded from the backend and committed on blur.
+  const [overrideDraft, setOverrideDraft] = useState("");
+  useEffect(() => {
+    setOverrideDraft(overrideMonthly > 0 ? String(Math.round(overrideMonthly)) : "");
+  }, [overrideMonthly]);
+
+  const commitOverride = () => {
+    const parsed = Math.max(0, Number(overrideDraft) || 0);
+    if (parsed !== overrideMonthly) {
+      updateConfig.mutate({ tax_override_monthly: parsed });
+    }
+  };
 
   const collapsedSummary = (
     <span className="collapsed-total">
-      {formatPercent(effectiveRate)} · {formatCurrency(monthlyTotal)}/mo
+      {formatPercent(effectiveRate)}
+      {overrideRate > 0 && ` (+ ${formatPercent(overrideRate)})`} ·{" "}
+      {formatCurrency(monthlyTotal)}/mo
     </span>
   );
 
@@ -92,6 +111,25 @@ export default function TaxesPanel({ budgetId }: { budgetId: number }) {
                 value={monthly(breakdown.state_income)}
               />
             )}
+            <div className="tax-line tax-override-line">
+              <span>Tax override</span>
+              <span className="tax-override-field">
+                <span className="tax-override-prefix">$</span>
+                <input
+                  className="text-input num tax-override-input"
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={overrideDraft}
+                  disabled={updateConfig.isPending}
+                  onChange={(event) => setOverrideDraft(event.target.value)}
+                  onBlur={commitOverride}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                  }}
+                />
+                <span className="ledger-monthly">/mo</span>
+              </span>
+            </div>
           </div>
 
           <div className="panel-total">

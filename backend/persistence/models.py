@@ -53,6 +53,11 @@ class Budget(Base):
     filing_status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default="mfj"
     )
+    # Optional manual add-on to the computed taxes (annual $). Folded into the
+    # tax total everywhere; the Taxes panel surfaces it separately as a hint.
+    tax_override_annual: Mapped[float] = mapped_column(
+        Numeric(12, 2), nullable=False, server_default="0"
+    )
 
     earnings: Mapped[list["Earning"]] = relationship(
         back_populates="budget", cascade="all, delete-orphan"

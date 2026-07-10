@@ -1124,6 +1124,21 @@ body {
   border-bottom: none;
 }
 
+/* Editable tax override line: right-aligned $ input with a /mo suffix. */
+.tax-override-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tax-override-prefix {
+  color: var(--text-muted);
+}
+.tax-override-input {
+  width: 90px;
+  text-align: right;
+  padding: 4px 8px;
+}
+
 /* Spending ledger: Item | Category (grows) | Payer | Amount | ✕. The last
    column is just the ✕ so the amount sits one column-gap from it (matching
    the gap between the other columns). The draft's Add button drops to its

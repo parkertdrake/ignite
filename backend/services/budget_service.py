@@ -145,9 +145,11 @@ async def set_tax_config(
     tax_year: int | None,
     state: str | None,
     filing_status: str | None,
+    tax_override_monthly: float | None = None,
 ) -> Budget | None:
-    """Update a budget's tax config (year / state / filing status). Only the
-    provided fields change; state is cleared by passing an empty string."""
+    """Update a budget's tax config (year / state / filing status / override).
+    Only the provided fields change; state is cleared by passing an empty
+    string. The override is entered per month and stored annualized."""
     budget = await session.get(Budget, budget_id)
     if budget is None:
         return None
@@ -157,6 +159,8 @@ async def set_tax_config(
         budget.state = state or None
     if filing_status is not None:
         budget.filing_status = filing_status
+    if tax_override_monthly is not None:
+        budget.tax_override_annual = tax_override_monthly * MONTHS_PER_YEAR
     await session.commit()
     await session.refresh(budget)
     return budget
@@ -194,6 +198,7 @@ async def clone_budget(
         tax_year=source.tax_year,
         state=source.state,
         filing_status=source.filing_status,
+        tax_override_annual=source.tax_override_annual,
     )
     session.add(clone)
     await session.flush()  # assign clone.id before copying children

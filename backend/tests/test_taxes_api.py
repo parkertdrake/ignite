@@ -89,3 +89,66 @@ def test_config_defaults_to_latest_year(seeded_client):
     budget = _budget_with_income(seeded_client, [100000])
     taxes = seeded_client.get(f"/api/budgets/{budget['id']}/taxes").json()
     assert taxes["year"] == 2025
+
+
+def test_override_adds_to_total_but_not_rate(seeded_client):
+    budget = _budget_with_income(seeded_client, [200000])
+    before = seeded_client.get(f"/api/budgets/{budget['id']}/taxes").json()
+
+    seeded_client.patch(
+        f"/api/budgets/{budget['id']}/tax-config", json={"tax_override_monthly": 500}
+    )
+    after = seeded_client.get(f"/api/budgets/{budget['id']}/taxes").json()
+
+    assert after["override_annual"] == pytest.approx(6000)
+    assert after["total_annual"] == pytest.approx(before["total_annual"] + 6000)
+    # Predicted effective rate excludes the override.
+    assert after["effective_rate"] == pytest.approx(before["effective_rate"])
+
+
+def test_override_folds_into_summary(seeded_client):
+    budget = _budget_with_income(seeded_client, [200000])
+    seeded_client.patch(
+        f"/api/budgets/{budget['id']}/tax-config", json={"tax_override_monthly": 300}
+    )
+    summary = seeded_client.get(f"/api/budgets/{budget['id']}").json()["summary"]
+    annual_total = seeded_client.get(
+        f"/api/budgets/{budget['id']}/taxes"
+    ).json()["total_annual"]
+    assert summary["taxes"] == pytest.approx(annual_total / 12)
+
+
+def test_override_applies_without_seeded_year(client):
+    # Plain client has no tax data → computed taxes are 0, but the override
+    # still flows into the total.
+    budget = client.post("/api/budgets", json={"name": "2026"}).json()
+    client.post(
+        f"/api/budgets/{budget['id']}/earnings",
+        json={"person": "Parker", "gross_annual": 100000},
+    )
+    client.patch(
+        f"/api/budgets/{budget['id']}/tax-config", json={"tax_override_monthly": 250}
+    )
+    taxes = client.get(f"/api/budgets/{budget['id']}/taxes").json()
+    assert taxes["total_annual"] == pytest.approx(3000)
+    assert taxes["override_annual"] == pytest.approx(3000)
+
+
+def test_override_rejects_negative(seeded_client):
+    budget = _budget_with_income(seeded_client, [100000])
+    response = seeded_client.patch(
+        f"/api/budgets/{budget['id']}/tax-config", json={"tax_override_monthly": -100}
+    )
+    assert response.status_code == 422
+
+
+def test_clone_copies_override(seeded_client):
+    budget = _budget_with_income(seeded_client, [150000])
+    seeded_client.patch(
+        f"/api/budgets/{budget['id']}/tax-config", json={"tax_override_monthly": 400}
+    )
+    clone = seeded_client.post(
+        f"/api/budgets/{budget['id']}/copy", json={"name": "clone"}
+    ).json()
+    taxes = seeded_client.get(f"/api/budgets/{clone['id']}/taxes").json()
+    assert taxes["override_annual"] == pytest.approx(4800)

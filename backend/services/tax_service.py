@@ -150,8 +150,9 @@ async def compute_for_budget(session: AsyncSession, budget_id: int) -> dict:
     filing_status = budget["filing_status"] or FILING_MFJ
     year = budget["tax_year"] or await latest_year(session)
     state = budget["state"]
+    override = budget["tax_override_annual"]
 
-    empty = _empty_breakdown(year, state, filing_status, total_gross)
+    empty = _empty_breakdown(year, state, filing_status, total_gross, override)
     if year is None:
         return empty
 
@@ -180,7 +181,10 @@ async def compute_for_budget(session: AsyncSession, budget_id: int) -> dict:
             state_brackets = await _load_brackets(session, year, state, filing_status)
             state_income = progressive_tax(state_taxable, state_brackets)
 
-    total = federal_income + social_security + medicare + state_income
+    # `effective_rate` is the predicted (bracket-computed) rate; the manual
+    # override is added to the total but deliberately excluded from the rate.
+    computed = federal_income + social_security + medicare + state_income
+    total = computed + override
     return {
         "year": year,
         "state": state,
@@ -193,8 +197,9 @@ async def compute_for_budget(session: AsyncSession, budget_id: int) -> dict:
         "social_security": social_security,
         "medicare": medicare,
         "state_income": state_income,
+        "override_annual": override,
         "total_annual": total,
-        "effective_rate": (total / total_gross) if total_gross else 0.0,
+        "effective_rate": (computed / total_gross) if total_gross else 0.0,
     }
 
 
@@ -203,17 +208,29 @@ async def _load_budget_config(session: AsyncSession, budget_id: int) -> dict:
 
     budget = await session.get(Budget, budget_id)
     if budget is None:
-        return {"tax_year": None, "state": None, "filing_status": FILING_MFJ}
+        return {
+            "tax_year": None,
+            "state": None,
+            "filing_status": FILING_MFJ,
+            "tax_override_annual": 0.0,
+        }
     return {
         "tax_year": budget.tax_year,
         "state": budget.state,
         "filing_status": budget.filing_status,
+        "tax_override_annual": _to_float(budget.tax_override_annual),
     }
 
 
 def _empty_breakdown(
-    year: int | None, state: str | None, filing_status: str, gross: float
+    year: int | None,
+    state: str | None,
+    filing_status: str,
+    gross: float,
+    override: float = 0.0,
 ) -> dict:
+    # The override still applies even with no seeded brackets, so it flows into
+    # the total here too.
     return {
         "year": year,
         "state": state,
@@ -226,6 +243,7 @@ def _empty_breakdown(
         "social_security": 0.0,
         "medicare": 0.0,
         "state_income": 0.0,
-        "total_annual": 0.0,
+        "override_annual": override,
+        "total_annual": override,
         "effective_rate": 0.0,
     }

@@ -96,7 +96,12 @@ async def update_tax_config(
     session: AsyncSession = Depends(get_session),
 ) -> BudgetOut:
     budget = await budget_service.set_tax_config(
-        session, budget_id, payload.tax_year, payload.state, payload.filing_status
+        session,
+        budget_id,
+        payload.tax_year,
+        payload.state,
+        payload.filing_status,
+        payload.tax_override_monthly,
     )
     if budget is None:
         raise HTTPException(status_code=404, detail="budget not found")

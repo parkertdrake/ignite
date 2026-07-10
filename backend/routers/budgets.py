@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from dependencies import get_session
 from persistence.models import Budget
 from schemas.budgets import BudgetCreate, BudgetOut, BudgetSummary
+from schemas.flow import BudgetFlow
 from schemas.taxes import TaxConfigUpdate
-from services import budget_service
+from services import budget_service, flow_service
 
 router = APIRouter(prefix="/api/budgets", tags=["budgets"])
 
@@ -55,6 +56,15 @@ async def get_budget(
     if budget is None:
         raise HTTPException(status_code=404, detail="budget not found")
     return _to_out(budget, await budget_service.summarize(session, budget.id))
+
+
+@router.get("/{budget_id}/flow", response_model=BudgetFlow)
+async def get_flow(
+    budget_id: int, session: AsyncSession = Depends(get_session)
+) -> BudgetFlow:
+    if await budget_service.get_budget(session, budget_id) is None:
+        raise HTTPException(status_code=404, detail="budget not found")
+    return BudgetFlow(**await flow_service.build_flow(session, budget_id))
 
 
 @router.post("/{budget_id}/activate", response_model=BudgetOut)

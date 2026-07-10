@@ -3,11 +3,11 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useActivateBudget, useBudget } from "../api/budgets";
 import CloneBudgetDialog from "../components/CloneBudgetDialog";
 import DeleteBudgetDialog from "../components/DeleteBudgetDialog";
+import BudgetOverview from "../components/BudgetOverview";
 import EarningsPanel from "../components/EarningsPanel";
 import PretaxSavingsPanel from "../components/PretaxSavingsPanel";
 import SavingsPanel from "../components/SavingsPanel";
 import SpendingPanel from "../components/SpendingPanel";
-import SummaryHeader from "../components/SummaryHeader";
 import TaxesPanel from "../components/TaxesPanel";
 import { CheckIcon, CopyIcon, TrashIcon } from "../components/icons";
 
@@ -77,7 +77,7 @@ export default function BudgetDetail() {
             </div>
           </div>
 
-          <SummaryHeader summary={budget.summary} />
+          <BudgetOverview budgetId={budgetId} summary={budget.summary} />
 
           <EarningsPanel budgetId={budgetId} />
           <PretaxSavingsPanel budgetId={budgetId} />

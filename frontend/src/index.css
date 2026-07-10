@@ -529,6 +529,199 @@ body {
   font-size: 16px;
 }
 
+/* Budget overview: doughnut (1/3) beside cash-flow Sankey (2/3). */
+.budget-overview {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 760px) {
+  .budget-overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+.overview-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  min-width: 0;
+}
+
+.overview-title {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+
+.overview-doughnut {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Center the doughnut + legend in the leftover panel height (title stays top). */
+.doughnut-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Doughnut. */
+.doughnut {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.doughnut-svg {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+}
+
+.doughnut-arc {
+  cursor: pointer;
+  stroke: var(--surface);
+  stroke-width: 2;
+  transition: opacity 0.12s ease;
+}
+
+.doughnut-arc-label {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.doughnut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.doughnut-center-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.doughnut-center-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.doughnut-center-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.doughnut-legend {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.doughnut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* Sankey. */
+.sankey {
+  position: relative;
+}
+
+.sankey-svg {
+  width: 100%;
+  height: auto;
+}
+
+.sankey-link {
+  fill: none;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.sankey-node {
+  cursor: default;
+}
+
+.sankey-node-label {
+  font-size: 11px;
+  fill: var(--text);
+  pointer-events: none;
+}
+
+.sankey-node-name {
+  fill: var(--text);
+}
+
+.sankey-node-value {
+  fill: var(--text-muted);
+  font-weight: 600;
+}
+
+.sankey-node-label.household {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+/* Shared chart chrome. */
+.chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -140%);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* Trickle-down panels. */
 .panel {
   --tone: var(--border);
